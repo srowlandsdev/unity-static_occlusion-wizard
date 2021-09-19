@@ -24,7 +24,7 @@ public class StaticOcclusionVariables
 
 public class SOCWizard : EditorWindow
 {
-    [MenuItem("Spira Tools/SOC Wizard")]
+    [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
