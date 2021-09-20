@@ -327,7 +327,7 @@ public class SOCWizard : EditorWindow
 
         if (GUILayout.Button("Occlusion Data Paths to File"))
         {
-
+            UnityEngine.Debug.Log($"Writing SOC data paths to file: {null}");
         }
     }
 	
@@ -340,6 +340,7 @@ public class SOCWizard : EditorWindow
 	}
     #endregion
 
+    //TODO: Save and ser the params from UI to the json
     void JsonSerializeUmbraInput()
     {
         StaticOcclusionVariables staticOcclusionVariables = new StaticOcclusionVariables()
@@ -359,9 +360,10 @@ public class SOCWizard : EditorWindow
         };
 
         string json = JsonUtility.ToJson(staticOcclusionVariables);
+        UnityEngine.Debug.Log("Writing SOC parameters to file: Library/Occlusion/input.scene.json");
     }
 
-    public void WriteUmbraLogToConsole()
+    void WriteUmbraLogToConsole()
     {
         string[] lines = File.ReadAllLines(@"E:\Projects\FFXR\Library\Occlusion\log.txt");
 
