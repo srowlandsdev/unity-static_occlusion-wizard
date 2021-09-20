@@ -3,9 +3,9 @@ using System.IO;
 using System.Diagnostics;
 using UnityEngine;
 using UnityEditor;
-using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
 
+[Serializable]
 public class StaticOcclusionVariables
 {
     public bool tomeMatch { get; set; }
@@ -32,7 +32,7 @@ public class SOCWizard : EditorWindow
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
-        window.minSize = new Vector2(675, 675);
+        window.minSize = new Vector2(675, 630);
         window.Show();
     }
 
@@ -72,6 +72,10 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         GUILayout.Label("Project SOC Information", EditorStyles.boldLabel);
         DisplayProjectOcclusionInformation();
+		GUILayout.Space(5);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        GUILayout.Label("Custom Culling Group Tools", EditorStyles.boldLabel);
+		DisplayCustomCullingTools();
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndHorizontal();
     }
@@ -326,13 +330,15 @@ public class SOCWizard : EditorWindow
 
         }
     }
+	
+	void DisplayCustomCullingTools()
+	{
+		if(GUILayout.Button("Create Custom Culling Group"))
+		{
+			GenerateNewCustomCullingGroup(1000);
+		}
+	}
     #endregion
-
-    void JsonDeserializeUmbraInput()
-    {
-        string jsonData = "";
-        StaticOcclusionVariables staticOcclusionVariables = JsonConvert.DeserializeObject<StaticOcclusionVariables>(jsonData);
-    }
 
     void JsonSerializeUmbraInput()
     {
@@ -352,7 +358,7 @@ public class SOCWizard : EditorWindow
             clusterSize = 0,
         };
 
-        JsonConvert.SerializeObject(staticOcclusionVariables);
+        string json = JsonUtility.ToJson(staticOcclusionVariables);
     }
 
     public void WriteUmbraLogToConsole()
@@ -450,4 +456,18 @@ public class SOCWizard : EditorWindow
         AssetDatabase.SaveAssets();
         WriteUmbraLogToConsole();
     }
+	
+	void GenerateNewCustomCullingGroup(int numOfSpheres)
+	{
+		UnityEngine.Debug.Log($"Creating new culling group with bounding sphere size of {numOfSpheres}");
+		
+		BoundingSphere[] spheres = new BoundingSphere[numOfSpheres];
+		
+		spheres[0] = new BoundingSphere(Vector3.zero, 1f);
+		
+		CullingGroup customCullingGroup = new CullingGroup();
+		customCullingGroup.targetCamera = Camera.main;
+		customCullingGroup.Dispose();
+		customCullingGroup = null;
+	}
 }
