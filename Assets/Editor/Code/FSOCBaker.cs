@@ -24,6 +24,10 @@ public class StaticOcclusionVariables
 
 public class SOCWizard : EditorWindow
 {
+    bool bakeEditorBuildList = false;
+    bool spawnOnAsset = true;
+    bool isPortalOpen = true;
+        
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
     {
@@ -75,8 +79,6 @@ public class SOCWizard : EditorWindow
     #region GUI Methods
     void DisplayOcclussionTools()
     {
-        bool bakeEditorBuildList = false;
-
         EditorGUILayout.BeginVertical();
 
         bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", bakeEditorBuildList);
@@ -266,9 +268,6 @@ public class SOCWizard : EditorWindow
 
     void OcclusionSceneTools()
     {
-        bool spawnOnAsset = true;
-        bool isPortalOpen = true;
-
         EditorGUILayout.BeginVertical();
         EditorGUILayout.BeginHorizontal();
         spawnOnAsset = EditorGUILayout.Toggle("Spawn Asset at Target",spawnOnAsset);
