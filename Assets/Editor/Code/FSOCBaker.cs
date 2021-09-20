@@ -5,34 +5,20 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.SceneManagement;
 
-[Serializable]
-public class StaticOcclusionVariables
-{
-    public bool tomeMatch { get; set; }
-    public int smallestOccluder { get; set; }
-    public int hierDetail { get; set; }
-    public int objGroupCost { get; set; }
-    public float smallestHole { get; set; }
-    public bool outputVisualizations { get; set; }
-    public bool outputStrictViewVolumes { get; set; }
-    public int minAccurateDistance { get; set; }
-    public bool outputShadowOptimizations { get; set; }
-    public bool outputObjOptimizations { get; set; }
-    public bool outputAccurateDilation { get; set; }
-    public int clusterSize { get; set; }
-}
-
 public class SOCWizard : EditorWindow
 {
     bool bakeEditorBuildList = false;
     bool spawnOnAsset = true;
     bool isPortalOpen = true;
-        
+    OcclusionPortal occlusionPortal = new OcclusionPortal();
+
+    UnityEngine.Object target = Selection.activeObject;
+
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
-        window.minSize = new Vector2(675, 630);
+        window.minSize = new Vector2(360, 640);
         window.Show();
     }
 
@@ -43,25 +29,16 @@ public class SOCWizard : EditorWindow
 
     void ToolsDisplayController()
     {
-        EditorGUILayout.BeginHorizontal();
         EditorGUILayout.BeginVertical();
         GUILayout.Space(15);
         GUILayout.Label("SOC Bake Tools", EditorStyles.boldLabel);
         DisplayOcclussionTools();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("SOC Parameters", EditorStyles.boldLabel);
-        DisplayParameterSettings();
-        GUILayout.Space(5);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         GUILayout.Label("SOC Scene Tools", EditorStyles.boldLabel);
         OcclusionSceneTools();
-        EditorGUILayout.EndVertical();
-
-        GUILayout.Space(20);
-
-        EditorGUILayout.BeginVertical();
-        GUILayout.Space(15);
+        GUILayout.Space(5);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         GUILayout.Label("SOC Stopwatch Test", EditorStyles.boldLabel);
         OcclussionBakeProfiler();
         GUILayout.Space(5);
@@ -72,12 +49,7 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         GUILayout.Label("Project SOC Information", EditorStyles.boldLabel);
         DisplayProjectOcclusionInformation();
-		GUILayout.Space(5);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("Custom Culling Group Tools", EditorStyles.boldLabel);
-		DisplayCustomCullingTools();
         EditorGUILayout.EndVertical();
-        EditorGUILayout.EndHorizontal();
     }
 
     #region GUI Methods
@@ -97,14 +69,14 @@ public class SOCWizard : EditorWindow
                 {
                     UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
                     SceneManager.LoadScene("");
-                    SyncBakeStaticOcclusion();
+                    BakeStaticOcclusion();
                     UnityEngine.Debug.Log($"Baking scene{null}");
                 }
             }
             else
             {
-                UnityEngine.Debug.Log($"SOC Baking current scene in sync mode {null}");
-                SyncBakeStaticOcclusion();
+                UnityEngine.Debug.Log($"SOC Baking current scene only");
+                BakeStaticOcclusion();
             }
         }
 
@@ -117,14 +89,14 @@ public class SOCWizard : EditorWindow
                 {
                     UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
                     SceneManager.LoadScene("");
-                    AsyncBakeStaticOcclusion();
+                    BackgroundBakeStaticOcclusion();
                     UnityEngine.Debug.Log($"Baking scene{null}");
                 }
             }
             else
             {
-                UnityEngine.Debug.Log($"SOC Baking current scene in async mode {null}");
-                AsyncBakeStaticOcclusion();
+                UnityEngine.Debug.Log($"SOC Baking current scene only");
+                BackgroundBakeStaticOcclusion();
             }
         }
         EditorGUILayout.EndHorizontal();
@@ -167,17 +139,18 @@ public class SOCWizard : EditorWindow
             StaticOcclusionCulling.Clear();
 
             stopwatch.Start();
-            SyncBakeStaticOcclusion();
+            BakeStaticOcclusion();
             stopwatch.Stop();
             StaticOcclusionCulling.Clear();
 
             stopwatch.Reset();
             stopwatch.Start();
-            AsyncBakeStaticOcclusion();
+            BackgroundBakeStaticOcclusion();
             stopwatch.Stop();
         }
     }
 
+    //TODO: Find a way to get the lib folder path
     void DisplayContextInformation()
     {
         float umbraSize = StaticOcclusionCulling.umbraDataSize;
@@ -202,7 +175,7 @@ public class SOCWizard : EditorWindow
             if (GUILayout.Button("Open Umbra Folder"))
             {
                 UnityEngine.Debug.Log("Opening Umbra data folder");
-                Process.Start("explorer.exe", @"Library/Occlusion");
+                Process.Start("explorer.exe");
             }
         }
         else
@@ -224,61 +197,15 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.EndVertical();
     }
 
-    void DisplayParameterSettings()
-    {
-        StaticOcclusionVariables staticOcclusionVariables = new StaticOcclusionVariables();
-
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.BeginVertical();
-        EditorGUILayout.LabelField("Tome Match: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Smallest Occluder: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Hierarchy Detail: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Object Group Cost: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Smallest Hole: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Output Visualizations: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Output Strict View Volumes: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Minimum Accurate Distance: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Output Shadow Optimizations: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Output Object Optimizations: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Output Accurate Dilation: ", GUILayout.Width(180));
-        EditorGUILayout.LabelField("Cluster Size: ", GUILayout.Width(180));
-        EditorGUILayout.EndVertical();
-
-        EditorGUILayout.BeginVertical();
-        EditorGUILayout.Toggle(staticOcclusionVariables.tomeMatch);
-        EditorGUILayout.IntField(staticOcclusionVariables.smallestOccluder, GUILayout.Width(50));
-        EditorGUILayout.IntField(staticOcclusionVariables.hierDetail, GUILayout.Width(50));
-        EditorGUILayout.IntField(staticOcclusionVariables.objGroupCost, GUILayout.Width(50));
-        EditorGUILayout.Slider(staticOcclusionVariables.smallestHole,0f,100f,GUILayout.Width(150));
-        EditorGUILayout.Toggle(staticOcclusionVariables.outputVisualizations);
-        EditorGUILayout.Toggle(staticOcclusionVariables.outputStrictViewVolumes);
-        EditorGUILayout.IntField(staticOcclusionVariables.minAccurateDistance, GUILayout.Width(50));
-        EditorGUILayout.Toggle(staticOcclusionVariables.outputShadowOptimizations);
-        EditorGUILayout.Toggle(staticOcclusionVariables.outputObjOptimizations);
-        EditorGUILayout.Toggle(staticOcclusionVariables.outputAccurateDilation);
-        EditorGUILayout.IntField(staticOcclusionVariables.clusterSize, GUILayout.Width(50));
-        EditorGUILayout.EndVertical();
-        EditorGUILayout.EndHorizontal();
-
-        GUILayout.Space(5);
-
-        EditorGUILayout.BeginVertical();
-        if(GUILayout.Button("Save Parameter Settings"))
-        {
-            JsonSerializeUmbraInput();
-        }
-        EditorGUILayout.EndVertical();
-    }
-
     void OcclusionSceneTools()
     {
         EditorGUILayout.BeginVertical();
         EditorGUILayout.BeginHorizontal();
-        spawnOnAsset = EditorGUILayout.Toggle("Spawn Asset at Target",spawnOnAsset);
+        spawnOnAsset = EditorGUILayout.ToggleLeft("Spawn Asset at Target",spawnOnAsset);
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.BeginHorizontal();
-        isPortalOpen= EditorGUILayout.Toggle("Portal Creation State",isPortalOpen);
+        isPortalOpen= EditorGUILayout.ToggleLeft("Portal Creation State",isPortalOpen);
         EditorGUILayout.EndHorizontal();
 
         if(isPortalOpen == false)
@@ -290,28 +217,21 @@ public class SOCWizard : EditorWindow
             EditorGUILayout.HelpBox("Portal creation state is set to OPEN", MessageType.Info);
         }
 
-        if(spawnOnAsset)
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Create SOC Portal"))
         {
-            if (GUILayout.Button("Create SOC Portal"))
-            {
-                if(isPortalOpen)
-                {
-                    GenerateOcclusionPortal(isPortalOpen, spawnOnAsset);
-                }
-            }
+            GenerateOcclusionPortal(isPortalOpen, spawnOnAsset);
         }
 
-        if(spawnOnAsset)
+        if (GUILayout.Button("Create SOC Area"))
         {
-            if (GUILayout.Button("Create SOC Area"))
-            {
-                GenerateOcclusionArea(spawnOnAsset);
-            }
+            GenerateOcclusionArea(spawnOnAsset);
         }
-
+        EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndVertical();
     }
 
+    //TODO: Write paths to file and output path location
     void DisplayProjectOcclusionInformation()
     {
         string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
@@ -330,38 +250,7 @@ public class SOCWizard : EditorWindow
             UnityEngine.Debug.Log($"Writing SOC data paths to file: {null}");
         }
     }
-	
-	void DisplayCustomCullingTools()
-	{
-		if(GUILayout.Button("Create Custom Culling Group"))
-		{
-			GenerateNewCustomCullingGroup(1000);
-		}
-	}
     #endregion
-
-    //TODO: Save and ser the params from UI to the json
-    void JsonSerializeUmbraInput()
-    {
-        StaticOcclusionVariables staticOcclusionVariables = new StaticOcclusionVariables()
-        {
-            tomeMatch = false,
-            smallestOccluder = 0,
-            hierDetail = 0,
-            objGroupCost = 0,
-            smallestHole = 0.1f,
-            outputVisualizations = false,
-            outputStrictViewVolumes = false,
-            minAccurateDistance = 0,
-            outputShadowOptimizations = false,
-            outputObjOptimizations = false,
-            outputAccurateDilation = false,
-            clusterSize = 0,
-        };
-
-        string json = JsonUtility.ToJson(staticOcclusionVariables);
-        UnityEngine.Debug.Log("Writing SOC parameters to file: Library/Occlusion/input.scene.json");
-    }
 
     void WriteUmbraLogToConsole()
     {
@@ -373,26 +262,25 @@ public class SOCWizard : EditorWindow
         }
     }
 
+    //TODO: Fix instantiation
     void GenerateOcclusionPortal(bool isOpenDefault, bool spawnOnAsset)
     {
-        OcclusionPortal newOcclusionPortal = new();
-        GameObject target = Selection.activeGameObject;
-
         if(spawnOnAsset == true)
         {
-            UnityEngine.Debug.Log($"Spawning occlusion portal on object: {target.name} at transform: {target.transform.position}");
-            Instantiate(newOcclusionPortal, target.transform.position, Quaternion.identity);
+            UnityEngine.Debug.Log($"Spawning occlusion portal on object: {target.name} at transform: {Vector3.zero}");
+            Instantiate(occlusionPortal, Vector3.zero, Quaternion.identity);
         }
         else
         {
             UnityEngine.Debug.Log($"Spawning occlusion portal at world origin");
-            Instantiate(newOcclusionPortal, Vector3.zero, Quaternion.identity);
+            Instantiate(occlusionPortal, Vector3.zero, Quaternion.identity);
         }
 
-        newOcclusionPortal.open = isOpenDefault;
+        occlusionPortal.open = isOpenDefault;
         AssetDatabase.SaveAssets();
     }
 
+    //TODO: Fix instantiation
     void GenerateOcclusionArea(bool spawnOnAsset)
     {
         OcclusionArea newOcclusionArea = new();
@@ -400,7 +288,7 @@ public class SOCWizard : EditorWindow
 
         if (spawnOnAsset == true)
         {
-            UnityEngine.Debug.Log($"Spawning occlusion area on object: {target.name} @ transform: {target.transform.position}");
+            UnityEngine.Debug.Log($"Spawning occlusion area on object: {target.name} at transform: {target.transform.position}");
             Instantiate(newOcclusionArea, target.transform.position, Quaternion.identity);
         }
         else
@@ -423,53 +311,39 @@ public class SOCWizard : EditorWindow
         }
     }
 
-    public void SyncBakeStaticOcclusion()
+    public void BakeStaticOcclusion()
     {
         Scene currentScene = SceneManager.GetActiveScene();
         string currentSceneName = currentScene.name;
 
         Stopwatch stopwatch = new Stopwatch();
-        UnityEngine.Debug.Log($"Starting SOC sync bake of scene {currentSceneName} at: {DateTime.Now}");
+        UnityEngine.Debug.Log($"Starting SOC bake of scene {currentSceneName} at: {DateTime.Now}");
         stopwatch.Start();
         StaticOcclusionCulling.Compute();
         stopwatch.Stop();
 
-        UnityEngine.Debug.Log($"Time to complete sync bake in milliseconds: {stopwatch.ElapsedMilliseconds}");
-        UnityEngine.Debug.Log($"SOC sync bake completed at: {DateTime.Now}");
+        UnityEngine.Debug.Log($"Time to complete bake in milliseconds: {stopwatch.ElapsedMilliseconds}");
+        UnityEngine.Debug.Log($"SOC bake completed at: {DateTime.Now}");
 
         AssetDatabase.SaveAssets();
         WriteUmbraLogToConsole();
     }
 
-    public void AsyncBakeStaticOcclusion()
+    public void BackgroundBakeStaticOcclusion()
     {
         Scene currentScene = SceneManager.GetActiveScene();
         string currentSceneName = currentScene.name;
 
         Stopwatch stopwatch = new Stopwatch();
-        UnityEngine.Debug.Log($"Starting SOC async bake of scene {currentSceneName} at: {DateTime.Now}");
+        UnityEngine.Debug.Log($"Starting SOC background bake of scene {currentSceneName} at: {DateTime.Now}");
         stopwatch.Start();
         StaticOcclusionCulling.GenerateInBackground();
         stopwatch.Stop();
 
-        UnityEngine.Debug.Log($"Time to complete async bake in milliseconds: {stopwatch.ElapsedMilliseconds}");
-        UnityEngine.Debug.Log($"SOC async bake completed at: {DateTime.Now}");
+        UnityEngine.Debug.Log($"Time to complete background bake in milliseconds: {stopwatch.ElapsedMilliseconds}");
+        UnityEngine.Debug.Log($"SOC background bake completed at: {DateTime.Now}");
 
         AssetDatabase.SaveAssets();
         WriteUmbraLogToConsole();
     }
-	
-	void GenerateNewCustomCullingGroup(int numOfSpheres)
-	{
-		UnityEngine.Debug.Log($"Creating new culling group with bounding sphere size of {numOfSpheres}");
-		
-		BoundingSphere[] spheres = new BoundingSphere[numOfSpheres];
-		
-		spheres[0] = new BoundingSphere(Vector3.zero, 1f);
-		
-		CullingGroup customCullingGroup = new CullingGroup();
-		customCullingGroup.targetCamera = Camera.main;
-		customCullingGroup.Dispose();
-		customCullingGroup = null;
-	}
 }
