@@ -7,12 +7,13 @@ using UnityEngine.SceneManagement;
 
 public class SOCWizard : EditorWindow
 {
-    bool bakeEditorBuildList = false;
-    bool spawnOnAsset = true;
-    bool isPortalOpen = true;
-    OcclusionPortal occlusionPortal = new OcclusionPortal();
+    bool bakeEditorBuildList;
+    bool spawnOnAsset;
+    bool isPortalOpen;
 
-    GameObject target = Selection.activeGameObject;
+    UnityEngine.Object occlusionPortalTemplate;
+    UnityEngine.Object occlusionAreaTemplate;
+    GameObject target;
 
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
@@ -208,7 +209,10 @@ public class SOCWizard : EditorWindow
         isPortalOpen= EditorGUILayout.ToggleLeft("Portal Creation State",isPortalOpen);
         EditorGUILayout.EndHorizontal();
 
-        if(isPortalOpen == false)
+        occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template",occlusionPortalTemplate,typeof(GameObject),true);
+        occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true);
+
+        if (isPortalOpen == false)
         {
             EditorGUILayout.HelpBox("Portal creation state is set to CLOSED", MessageType.Info);
         }
@@ -220,12 +224,12 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("Create SOC Portal"))
         {
-            GenerateOcclusionPortal(isPortalOpen, spawnOnAsset);
+            GenerateOcclusionPortal();
         }
 
         if (GUILayout.Button("Create SOC Area"))
         {
-            GenerateOcclusionArea(spawnOnAsset);
+            GenerateOcclusionArea();
         }
         EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndVertical();
@@ -262,42 +266,54 @@ public class SOCWizard : EditorWindow
         }
     }
 
-    //TODO: Fix instantiation
-    void GenerateOcclusionPortal(bool isOpenDefault, bool spawnOnAsset)
+    void GenerateOcclusionPortal()
     {
-        if(spawnOnAsset == true)
+        GameObject newOcclusionPortal;
+
+        target = Selection.activeGameObject;
+
+        if (spawnOnAsset == true)
         {
             UnityEngine.Debug.Log($"Spawning occlusion portal on object: {target.name} at transform: {Vector3.zero}");
-            Instantiate(occlusionPortal, Vector3.zero, Quaternion.identity);
+            newOcclusionPortal = Instantiate(occlusionPortalTemplate, target.transform.position, Quaternion.identity) as GameObject;
+
+            OcclusionPortal portalState = newOcclusionPortal.GetComponent<OcclusionPortal>();
+            portalState.open = isPortalOpen;
         }
         else
         {
             UnityEngine.Debug.Log($"Spawning occlusion portal at world origin");
-            Instantiate(occlusionPortal, Vector3.zero, Quaternion.identity);
+            newOcclusionPortal = Instantiate(occlusionPortalTemplate, Vector3.zero, Quaternion.identity) as GameObject;
         }
 
-        occlusionPortal.open = isOpenDefault;
+        newOcclusionPortal.name = $"CustomOcclusionPortal_{newOcclusionPortal.transform.position}";
+
         AssetDatabase.SaveAssets();
     }
 
-    //TODO: Fix instantiation
-    void GenerateOcclusionArea(bool spawnOnAsset)
+    void GenerateOcclusionArea()
     {
-        OcclusionArea newOcclusionArea = new();
-        GameObject target = Selection.activeGameObject;
+        GameObject newOcclusionArea;
+
+        target = Selection.activeGameObject;
 
         if (spawnOnAsset == true)
         {
             UnityEngine.Debug.Log($"Spawning occlusion area on object: {target.name} at transform: {target.transform.position}");
-            Instantiate(newOcclusionArea, target.transform.position, Quaternion.identity);
+            newOcclusionArea = Instantiate(occlusionAreaTemplate, target.transform.position, Quaternion.identity) as GameObject;
+
+            OcclusionArea occlusionArea = newOcclusionArea.GetComponent<OcclusionArea>();
+            occlusionArea.size = target.transform.position;
         }
         else
         {
             UnityEngine.Debug.Log($"Spawning occlusion area at world origin");
-            Instantiate(newOcclusionArea, Vector3.zero, Quaternion.identity);
+            newOcclusionArea = Instantiate(occlusionAreaTemplate, Vector3.zero, Quaternion.identity) as GameObject;
         }
 
-        UnityEngine.Debug.Log($"Creating SOC area at: {newOcclusionArea.transform.position}");
+        newOcclusionArea.name = $"CustomOcclusionArea_{newOcclusionArea.transform.position}";
+
+        AssetDatabase.SaveAssets();
     }
 
     void GetProjectOcclusionData()
@@ -314,9 +330,9 @@ public class SOCWizard : EditorWindow
 	void WriteOcclusionDataToFile(string savePath)
 	{
 		string[] lines = AssetDatabase.FindAssets("OcclusionCullingData");
-		
+
 		UnityEngine.Debug.Log($"Writing SOC data paths to file: {savePath}");
-		
+
 		using(StreamWriter outputFile = new StreamWriter(Path.Combine(savePath, "WriteLines.txt")))
 		{
 			foreach(string text in lines)
@@ -326,7 +342,7 @@ public class SOCWizard : EditorWindow
 			}
 		}
 	}
-	
+
     public void BakeStaticOcclusion()
     {
         Scene currentScene = SceneManager.GetActiveScene();
