@@ -12,7 +12,7 @@ public class SOCWizard : EditorWindow
     bool isPortalOpen = true;
     OcclusionPortal occlusionPortal = new OcclusionPortal();
 
-    UnityEngine.Object target = Selection.activeObject;
+    GameObject target = Selection.activeGameObject;
 
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
@@ -247,7 +247,7 @@ public class SOCWizard : EditorWindow
 
         if (GUILayout.Button("Occlusion Data Paths to File"))
         {
-            UnityEngine.Debug.Log($"Writing SOC data paths to file: {null}");
+			WriteOcclusionDataToFile("");
         }
     }
     #endregion
@@ -311,6 +311,22 @@ public class SOCWizard : EditorWindow
         }
     }
 
+	void WriteOcclusionDataToFile(string savePath)
+	{
+		string[] lines = AssetDatabase.FindAssets("OcclusionCullingData");
+		
+		UnityEngine.Debug.Log($"Writing SOC data paths to file: {savePath}");
+		
+		using(StreamWriter outputFile = new StreamWriter(Path.Combine(savePath, "WriteLines.txt")))
+		{
+			foreach(string text in lines)
+			{
+				string path = AssetDatabase.GUIDToAssetPath(text);
+				outputFile.WriteLine(text);
+			}
+		}
+	}
+	
     public void BakeStaticOcclusion()
     {
         Scene currentScene = SceneManager.GetActiveScene();
