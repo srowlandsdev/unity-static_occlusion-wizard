@@ -13,13 +13,14 @@ public class SOCWizard : EditorWindow
 
     UnityEngine.Object occlusionPortalTemplate;
     UnityEngine.Object occlusionAreaTemplate;
+
     GameObject target;
 
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
-        window.minSize = new Vector2(360, 640);
+        window.minSize = new Vector2(360, 675);
         window.Show();
     }
 
@@ -251,7 +252,7 @@ public class SOCWizard : EditorWindow
 
         if (GUILayout.Button("Occlusion Data Paths to File"))
         {
-			WriteOcclusionDataToFile("");
+			WriteOcclusionDataToFile();
         }
     }
     #endregion
@@ -327,21 +328,21 @@ public class SOCWizard : EditorWindow
         }
     }
 
-	void WriteOcclusionDataToFile(string savePath)
+	void WriteOcclusionDataToFile()
 	{
 		string[] lines = AssetDatabase.FindAssets("OcclusionCullingData");
 
-		UnityEngine.Debug.Log($"Writing SOC data paths to file: {savePath}");
+        UnityEngine.Debug.Log(Application.temporaryCachePath + "WriteLines.txt");
 
-		using(StreamWriter outputFile = new StreamWriter(Path.Combine(savePath, "WriteLines.txt")))
+		using(StreamWriter outputFile = new StreamWriter(Application.temporaryCachePath + "WriteLines.txt"))
 		{
 			foreach(string text in lines)
 			{
 				string path = AssetDatabase.GUIDToAssetPath(text);
-				outputFile.WriteLine(text);
+				outputFile.WriteLine($"{path}:{text}");
 			}
 		}
-	}
+    }
 
     public void BakeStaticOcclusion()
     {
