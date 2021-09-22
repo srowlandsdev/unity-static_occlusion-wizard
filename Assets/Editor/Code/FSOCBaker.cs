@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 
 public class SOCWizard : EditorWindow
 {
+    #region Variables
     bool bakeEditorBuildList;
     bool spawnOnAsset;
     bool isPortalOpen;
@@ -15,12 +16,13 @@ public class SOCWizard : EditorWindow
     UnityEngine.Object occlusionAreaTemplate;
 
     GameObject target;
+    #endregion
 
     [MenuItem("External Tools/SOC Wizard")]
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
-        window.minSize = new Vector2(360, 675);
+        window.minSize = new Vector2(360, 880);
         window.Show();
     }
 
@@ -51,6 +53,10 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         GUILayout.Label("Project SOC Information", EditorStyles.boldLabel);
         DisplayProjectOcclusionInformation();
+        GUILayout.Space(5);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        GUILayout.Label("Custom Group Tools", EditorStyles.boldLabel);
+        DisplayCustomGroupTools();
         EditorGUILayout.EndVertical();
     }
 
@@ -60,6 +66,10 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.BeginVertical();
 
         bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", bakeEditorBuildList);
+
+        StaticOcclusionCulling.backfaceThreshold = EditorGUILayout.FloatField("Backface Threshold", StaticOcclusionCulling.backfaceThreshold, GUILayout.Width(200));
+        StaticOcclusionCulling.smallestHole = EditorGUILayout.FloatField("Smallest Hole", StaticOcclusionCulling.smallestHole, GUILayout.Width(200));
+        StaticOcclusionCulling.smallestOccluder = EditorGUILayout.FloatField("Smallest Occluder", StaticOcclusionCulling.smallestOccluder, GUILayout.Width(200));
 
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("Generate"))
@@ -255,8 +265,24 @@ public class SOCWizard : EditorWindow
 			WriteOcclusionDataToFile();
         }
     }
+
+    void DisplayCustomGroupTools()
+    {
+        EditorGUILayout.BeginVertical();
+        int numberOfSpheres = EditorGUILayout.IntField("# of Bounding Spheres", 100, GUILayout.Width(200));
+        float baseRadius = EditorGUILayout.FloatField("Base Radius Size", 10f, GUILayout.Width(200));
+        float radiusStepValue = EditorGUILayout.FloatField("Radius Increment Value", 20f, GUILayout.Width(200));
+
+        if (GUILayout.Button("Create Custom Culling Group"))
+        {
+            CreateCustomCullingGroup(numberOfSpheres, baseRadius, radiusStepValue);
+        }
+
+        EditorGUILayout.EndVertical();
+    }
     #endregion
 
+    #region Functional Methods
     void WriteUmbraLogToConsole()
     {
         string[] lines = File.ReadAllLines(@"E:\Projects\FFXR\Library\Occlusion\log.txt");
@@ -304,7 +330,7 @@ public class SOCWizard : EditorWindow
             newOcclusionArea = Instantiate(occlusionAreaTemplate, target.transform.position, Quaternion.identity) as GameObject;
 
             OcclusionArea occlusionArea = newOcclusionArea.GetComponent<OcclusionArea>();
-            occlusionArea.size = target.transform.position;
+            occlusionArea.size = target.transform.localScale;
         }
         else
         {
@@ -321,10 +347,17 @@ public class SOCWizard : EditorWindow
     {
         string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
 
-        foreach(string file in ocDataFiles)
+        if(ocDataFiles.Length == 0)
         {
-            string path = AssetDatabase.GUIDToAssetPath(file);
-            UnityEngine.Debug.Log($"Occlusion data path: {path}");
+            UnityEngine.Debug.Log($"No occlusion paths present in project");
+        }
+        else
+        {
+            foreach (string file in ocDataFiles)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(file);
+                UnityEngine.Debug.Log($"Occlusion data path: {path}");
+            }
         }
     }
 
@@ -332,16 +365,30 @@ public class SOCWizard : EditorWindow
 	{
 		string[] lines = AssetDatabase.FindAssets("OcclusionCullingData");
 
-        UnityEngine.Debug.Log(Application.temporaryCachePath + "WriteLines.txt");
+        if(lines.Length == 0)
+        {
+            UnityEngine.Debug.Log($"No occlusion paths present in project");
+        }
+        else
+        {
+            UnityEngine.Debug.Log(Application.temporaryCachePath + "WriteLines.txt");
 
-		using(StreamWriter outputFile = new StreamWriter(Application.temporaryCachePath + "WriteLines.txt"))
-		{
-			foreach(string text in lines)
-			{
-				string path = AssetDatabase.GUIDToAssetPath(text);
-				outputFile.WriteLine($"{path}:{text}");
-			}
-		}
+            using (StreamWriter outputFile = new StreamWriter(Application.temporaryCachePath + "WriteLines.txt"))
+            {
+                foreach (string text in lines)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(text);
+                    outputFile.WriteLine($"{path}:{text}");
+                }
+            }
+        }
+    }
+
+    void LogOcclusionParameters()
+    {
+        UnityEngine.Debug.Log($"[SOC-PARAM] Backface Threshold: {StaticOcclusionCulling.backfaceThreshold}");
+        UnityEngine.Debug.Log($"[SOC-PARAM] Smallest Hole: {StaticOcclusionCulling.smallestHole}");
+        UnityEngine.Debug.Log($"[SOC-PARAM] Smallest Occluder: {StaticOcclusionCulling.smallestOccluder}");
     }
 
     public void BakeStaticOcclusion()
@@ -351,6 +398,7 @@ public class SOCWizard : EditorWindow
 
         Stopwatch stopwatch = new Stopwatch();
         UnityEngine.Debug.Log($"Starting SOC bake of scene {currentSceneName} at: {DateTime.Now}");
+        LogOcclusionParameters();
         stopwatch.Start();
         StaticOcclusionCulling.Compute();
         stopwatch.Stop();
@@ -369,6 +417,7 @@ public class SOCWizard : EditorWindow
 
         Stopwatch stopwatch = new Stopwatch();
         UnityEngine.Debug.Log($"Starting SOC background bake of scene {currentSceneName} at: {DateTime.Now}");
+        LogOcclusionParameters();
         stopwatch.Start();
         StaticOcclusionCulling.GenerateInBackground();
         stopwatch.Stop();
@@ -379,4 +428,45 @@ public class SOCWizard : EditorWindow
         AssetDatabase.SaveAssets();
         WriteUmbraLogToConsole();
     }
+
+    public void CreateCustomCullingGroup(int sphereCount, float baseRadius, float radiusStepValue)
+    {
+        UnityEngine.Debug.Log($"Creating a new culling group: count {sphereCount} || base radius {baseRadius} || radius step value {radiusStepValue}");
+
+        BoundingSphere[] bSpheres = new BoundingSphere[sphereCount];
+
+        bSpheres[0] = new BoundingSphere(Vector3.zero, baseRadius);
+
+        for(int i = 0; i > bSpheres.Length; i++)
+        {
+            bSpheres[i].radius = radiusStepValue;
+        }
+
+        CullingGroup newCullingGroup = new CullingGroup()
+        {
+            targetCamera = Camera.main,
+            enabled = true,
+            onStateChanged = CullingStateChange
+        };
+
+        newCullingGroup.SetBoundingSpheres(bSpheres);
+        newCullingGroup.SetBoundingSphereCount(1);
+        newCullingGroup.Dispose();
+        newCullingGroup = null;
+    }
+
+    void CullingStateChange(CullingGroupEvent evt)
+    {
+        if (evt.hasBecomeVisible)
+        {
+            UnityEngine.Debug.LogFormat("Asset {0} has become visible!", evt.index);
+            UnityEngine.Debug.LogFormat("Asset {0} is this distance from the culling group", evt.currentDistance);
+        }
+
+        if (evt.hasBecomeInvisible)
+        {
+            UnityEngine.Debug.LogFormat("Asset {0} has become invisible!", evt.index);
+        }
+    }
+    #endregion
 }
