@@ -12,10 +12,20 @@ public class SOCWizard : EditorWindow
     bool spawnOnAsset;
     bool isPortalOpen;
 
+    bool showBakeTools;
+    bool showSceneTool;
+    bool showTest;
+    bool showUmbraInfo;
+    bool showSocInfo;
+    bool showCustomGroupTools;
+    bool showVisOptions;
+
     UnityEngine.Object occlusionPortalTemplate;
     UnityEngine.Object occlusionAreaTemplate;
 
     GameObject target;
+
+    Vector2 scrollViewPosition;
     #endregion
 
     [MenuItem("External Tools/SOC Wizard")]
@@ -33,133 +43,144 @@ public class SOCWizard : EditorWindow
 
     void ToolsDisplayController()
     {
+        scrollViewPosition = EditorGUILayout.BeginScrollView(scrollViewPosition);
         EditorGUILayout.BeginVertical();
         GUILayout.Space(15);
-        GUILayout.Label("SOC Bake Tools", EditorStyles.boldLabel);
         DisplayOcclussionTools();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("SOC Scene Tools", EditorStyles.boldLabel);
         OcclusionSceneTools();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("SOC Stopwatch Test", EditorStyles.boldLabel);
         OcclussionBakeProfiler();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("Umbra Information", EditorStyles.boldLabel);
         DisplayContextInformation();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("Project SOC Information", EditorStyles.boldLabel);
         DisplayProjectOcclusionInformation();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        GUILayout.Label("Custom Group Tools", EditorStyles.boldLabel);
-        DisplayCustomGroupTools();
+        DisplayCustomGroupCreator();
+        GUILayout.Space(5);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        DisplayVisualizationOptions();
         EditorGUILayout.EndVertical();
+        EditorGUILayout.EndScrollView();
     }
 
     #region GUI Methods
     void DisplayOcclussionTools()
     {
-        EditorGUILayout.BeginVertical();
+        showBakeTools = EditorGUILayout.BeginFoldoutHeaderGroup(showBakeTools, "Bake Parameters & Tools");
 
-        bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", bakeEditorBuildList);
-
-        StaticOcclusionCulling.backfaceThreshold = EditorGUILayout.FloatField("Backface Threshold", StaticOcclusionCulling.backfaceThreshold, GUILayout.Width(200));
-        StaticOcclusionCulling.smallestHole = EditorGUILayout.FloatField("Smallest Hole", StaticOcclusionCulling.smallestHole, GUILayout.Width(200));
-        StaticOcclusionCulling.smallestOccluder = EditorGUILayout.FloatField("Smallest Occluder", StaticOcclusionCulling.smallestOccluder, GUILayout.Width(200));
-
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Generate"))
+        if(showBakeTools)
         {
-            if (bakeEditorBuildList)
+            EditorGUILayout.BeginVertical();
+
+            bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", bakeEditorBuildList);
+
+            StaticOcclusionCulling.backfaceThreshold = EditorGUILayout.FloatField("Backface Threshold", StaticOcclusionCulling.backfaceThreshold, GUILayout.Width(200));
+            StaticOcclusionCulling.smallestHole = EditorGUILayout.FloatField("Smallest Hole", StaticOcclusionCulling.smallestHole, GUILayout.Width(200));
+            StaticOcclusionCulling.smallestOccluder = EditorGUILayout.FloatField("Smallest Occluder", StaticOcclusionCulling.smallestOccluder, GUILayout.Width(200));
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Generate"))
             {
-                UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
-                foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+                if (bakeEditorBuildList)
                 {
-                    UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
-                    SceneManager.LoadScene("");
+                    UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
+                    foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+                    {
+                        UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
+                        SceneManager.LoadScene("");
+                        BakeStaticOcclusion();
+                        UnityEngine.Debug.Log($"Baking scene{null}");
+                    }
+                }
+                else
+                {
+                    UnityEngine.Debug.Log($"SOC Baking current scene only");
                     BakeStaticOcclusion();
-                    UnityEngine.Debug.Log($"Baking scene{null}");
                 }
             }
-            else
-            {
-                UnityEngine.Debug.Log($"SOC Baking current scene only");
-                BakeStaticOcclusion();
-            }
-        }
 
-        if (GUILayout.Button("Generate In Background"))
-        {
-            if (bakeEditorBuildList)
+            if (GUILayout.Button("Generate In Background"))
             {
-                UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
-                foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+                if (bakeEditorBuildList)
                 {
-                    UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
-                    SceneManager.LoadScene("");
+                    UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
+                    foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+                    {
+                        UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
+                        SceneManager.LoadScene("");
+                        BackgroundBakeStaticOcclusion();
+                        UnityEngine.Debug.Log($"Baking scene{null}");
+                    }
+                }
+                else
+                {
+                    UnityEngine.Debug.Log($"SOC Baking current scene only");
                     BackgroundBakeStaticOcclusion();
-                    UnityEngine.Debug.Log($"Baking scene{null}");
                 }
             }
-            else
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Cancel Bake"))
             {
-                UnityEngine.Debug.Log($"SOC Baking current scene only");
-                BackgroundBakeStaticOcclusion();
+                StaticOcclusionCulling.Cancel();
+                AssetDatabase.SaveAssets();
+                UnityEngine.Debug.Log("SOC bake operation cancelled!");
             }
+
+            if (GUILayout.Button("Clear Current Data"))
+            {
+                StaticOcclusionCulling.Clear();
+                AssetDatabase.SaveAssets();
+                UnityEngine.Debug.Log("SOC bake data cleared");
+            }
+
+            if (GUILayout.Button("Remove Cache Data"))
+            {
+                StaticOcclusionCulling.RemoveCacheFolder();
+                AssetDatabase.SaveAssets();
+                UnityEngine.Debug.Log("SOC cache data has been deleted!");
+            }
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.HelpBox("Removing cache data cannot be undone!", MessageType.Warning);
+
+            EditorGUILayout.EndVertical();
         }
-        EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Cancel Bake"))
-        {
-            StaticOcclusionCulling.Cancel();
-            AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log("SOC bake operation cancelled!");
-        }
-
-        if (GUILayout.Button("Clear Current Data"))
-        {
-            StaticOcclusionCulling.Clear();
-            AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log("SOC bake data cleared");
-        }
-
-        if (GUILayout.Button("Remove Cache Data"))
-        {
-            StaticOcclusionCulling.RemoveCacheFolder();
-            AssetDatabase.SaveAssets();
-            UnityEngine.Debug.Log("SOC cache data has been deleted!");
-        }
-        EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.HelpBox("Removing cache data cannot be undone!", MessageType.Warning);
-
-        EditorGUILayout.EndVertical();
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
     public void OcclussionBakeProfiler()
     {
         Stopwatch stopwatch = new Stopwatch();
 
-        if(GUILayout.Button("Run SOC Test"))
+        showTest = EditorGUILayout.BeginFoldoutHeaderGroup(showTest, "Static Occlusion Profiler");
+
+        if(showTest)
         {
-            UnityEngine.Debug.Log($"Clearing old SOC data.");
-            StaticOcclusionCulling.Clear();
+            if (GUILayout.Button("Run SOC Test"))
+            {
+                UnityEngine.Debug.Log($"Clearing old SOC data.");
+                StaticOcclusionCulling.Clear();
 
-            stopwatch.Start();
-            BakeStaticOcclusion();
-            stopwatch.Stop();
-            StaticOcclusionCulling.Clear();
+                stopwatch.Start();
+                BakeStaticOcclusion();
+                stopwatch.Stop();
+                StaticOcclusionCulling.Clear();
 
-            stopwatch.Reset();
-            stopwatch.Start();
-            BackgroundBakeStaticOcclusion();
-            stopwatch.Stop();
+                stopwatch.Reset();
+                stopwatch.Start();
+                BackgroundBakeStaticOcclusion();
+                stopwatch.Stop();
+            }
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
     //TODO: Find a way to get the lib folder path
@@ -167,83 +188,95 @@ public class SOCWizard : EditorWindow
     {
         float umbraSize = StaticOcclusionCulling.umbraDataSize;
 
-        if(StaticOcclusionCulling.isRunning)
-        {
-            EditorGUILayout.HelpBox("SOC bake is running", MessageType.Info);
-        }
+        showUmbraInfo = EditorGUILayout.BeginFoldoutHeaderGroup(showUmbraInfo, "Umbra Cache Utils");
 
-        if(StaticOcclusionCulling.doesSceneHaveManualPortals == true)
+        if(showUmbraInfo)
         {
-            EditorGUILayout.HelpBox("Current scene has manual occlusion portals", MessageType.Info);
-        }
-
-        GUILayout.Label($"Umbra data size in Bytes: {umbraSize}");
-        GUILayout.Label($"Umbra data size in Kilobytes: {umbraSize / 1024}");
-        GUILayout.Label($"Umbra data size in Megabytes: {umbraSize / 1024 / 1024}");
-
-        EditorGUILayout.BeginVertical();
-        if (Directory.Exists(@"Library/Occlusion"))
-        {
-            if (GUILayout.Button("Open Umbra Folder"))
+            if (StaticOcclusionCulling.isRunning)
             {
-                UnityEngine.Debug.Log("Opening Umbra data folder");
-                Process.Start("explorer.exe");
+                EditorGUILayout.HelpBox("SOC bake is running", MessageType.Info);
             }
-        }
-        else
-        {
-            EditorGUILayout.HelpBox("No Umbra cache present", MessageType.Info);
-        }
 
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Open Umbra Log File"))
-        {
-            File.Open(@"E:\Projects\FFXR\Library\Occlusion\log.txt", FileMode.Open);
-        }
+            if (StaticOcclusionCulling.doesSceneHaveManualPortals == true)
+            {
+                EditorGUILayout.HelpBox("Current scene has manual occlusion portals", MessageType.Info);
+            }
 
-        if (GUILayout.Button("Write Umbra Log to Console"))
-        {
-            WriteUmbraLogToConsole();
+            GUILayout.Label($"Umbra data size in Bytes: {umbraSize}");
+            GUILayout.Label($"Umbra data size in Kilobytes: {umbraSize / 1024}");
+            GUILayout.Label($"Umbra data size in Megabytes: {umbraSize / 1024 / 1024}");
+
+            EditorGUILayout.BeginVertical();
+            if (Directory.Exists(@"Library/Occlusion"))
+            {
+                if (GUILayout.Button("Open Umbra Folder"))
+                {
+                    UnityEngine.Debug.Log("Opening Umbra data folder");
+                    Process.Start("explorer.exe");
+                }
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("No Umbra cache present", MessageType.Info);
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Open Umbra Log File"))
+            {
+                File.Open(@"E:\Projects\FFXR\Library\Occlusion\log.txt", FileMode.Open);
+            }
+
+            if (GUILayout.Button("Write Umbra Log to Console"))
+            {
+                WriteUmbraLogToConsole();
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
         }
-        EditorGUILayout.EndHorizontal();
-        EditorGUILayout.EndVertical();
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
     void OcclusionSceneTools()
     {
-        EditorGUILayout.BeginVertical();
-        EditorGUILayout.BeginHorizontal();
-        spawnOnAsset = EditorGUILayout.ToggleLeft("Spawn Asset at Target",spawnOnAsset);
-        EditorGUILayout.EndHorizontal();
+        showSceneTool = EditorGUILayout.BeginFoldoutHeaderGroup(showSceneTool, "Custom Occlusion Scene Tools");
 
-        EditorGUILayout.BeginHorizontal();
-        isPortalOpen= EditorGUILayout.ToggleLeft("Portal Creation State",isPortalOpen);
-        EditorGUILayout.EndHorizontal();
-
-        occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template",occlusionPortalTemplate,typeof(GameObject),true);
-        occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true);
-
-        if (isPortalOpen == false)
+        if(showSceneTool)
         {
-            EditorGUILayout.HelpBox("Portal creation state is set to CLOSED", MessageType.Info);
-        }
-        else
-        {
-            EditorGUILayout.HelpBox("Portal creation state is set to OPEN", MessageType.Info);
-        }
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginHorizontal();
+            spawnOnAsset = EditorGUILayout.ToggleLeft("Spawn Asset at Target", spawnOnAsset);
+            EditorGUILayout.EndHorizontal();
 
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Create SOC Portal"))
-        {
-            GenerateOcclusionPortal();
-        }
+            EditorGUILayout.BeginHorizontal();
+            isPortalOpen = EditorGUILayout.ToggleLeft("Portal Creation State", isPortalOpen);
+            EditorGUILayout.EndHorizontal();
 
-        if (GUILayout.Button("Create SOC Area"))
-        {
-            GenerateOcclusionArea();
+            occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template", occlusionPortalTemplate, typeof(GameObject), true);
+            occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true);
+
+            if (isPortalOpen == false)
+            {
+                EditorGUILayout.HelpBox("Portal creation state is set to CLOSED", MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox("Portal creation state is set to OPEN", MessageType.Info);
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Create SOC Portal"))
+            {
+                GenerateOcclusionPortal();
+            }
+
+            if (GUILayout.Button("Create SOC Area"))
+            {
+                GenerateOcclusionArea();
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
         }
-        EditorGUILayout.EndHorizontal();
-        EditorGUILayout.EndVertical();
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
     //TODO: Write paths to file and output path location
@@ -253,32 +286,63 @@ public class SOCWizard : EditorWindow
 
         int totalOcDataFileCount = ocDataFiles.Length;
 
-        GUILayout.Label($"# of Occlusion Data files in project: {totalOcDataFileCount}");
+        showSocInfo = EditorGUILayout.BeginFoldoutHeaderGroup(showSocInfo, "Static Occlusion Information");
 
-        if (GUILayout.Button("Occlusion Data Paths to Console"))
+        if(showSocInfo)
         {
-            GetProjectOcclusionData();
-        }
+            GUILayout.Label($"# of Occlusion Data files in project: {totalOcDataFileCount}");
 
-        if (GUILayout.Button("Occlusion Data Paths to File"))
-        {
-			WriteOcclusionDataToFile();
+            if (GUILayout.Button("Occlusion Data Paths to Console"))
+            {
+                GetProjectOcclusionData();
+            }
+
+            if (GUILayout.Button("Occlusion Data Paths to File"))
+            {
+                WriteOcclusionDataToFile();
+            }
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
-    void DisplayCustomGroupTools()
+    void DisplayCustomGroupCreator()
     {
-        EditorGUILayout.BeginVertical();
-        int numberOfSpheres = EditorGUILayout.IntField("# of Bounding Spheres", 100, GUILayout.Width(200));
-        float baseRadius = EditorGUILayout.FloatField("Base Radius Size", 10f, GUILayout.Width(200));
-        float radiusStepValue = EditorGUILayout.FloatField("Radius Increment Value", 20f, GUILayout.Width(200));
+        showCustomGroupTools = EditorGUILayout.BeginFoldoutHeaderGroup(showCustomGroupTools, "Custom Group Creator");
 
-        if (GUILayout.Button("Create Custom Culling Group"))
+        if(showCustomGroupTools)
         {
-            CreateCustomCullingGroup(numberOfSpheres, baseRadius, radiusStepValue);
-        }
+            EditorGUILayout.BeginVertical();
+            int numberOfSpheres = EditorGUILayout.IntField("# of Bounding Spheres", 100, GUILayout.Width(200));
+            float baseRadius = EditorGUILayout.FloatField("Base Radius Size", 10f, GUILayout.Width(200));
+            float radiusStepValue = EditorGUILayout.FloatField("Radius Increment Value", 20f, GUILayout.Width(200));
 
-        EditorGUILayout.EndVertical();
+            if (GUILayout.Button("Create Custom Culling Group"))
+            {
+                CreateCustomCullingGroup(numberOfSpheres, baseRadius, radiusStepValue);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+        EditorGUILayout.EndFoldoutHeaderGroup();
+    }
+
+    void DisplayVisualizationOptions()
+    {
+        showVisOptions = EditorGUILayout.BeginFoldoutHeaderGroup(showVisOptions, "Visualization Options");
+
+        if(showVisOptions)
+        {
+            EditorGUILayout.BeginVertical();
+            StaticOcclusionCullingVisualization.showDynamicObjectBounds = EditorGUILayout.ToggleLeft("Show Dynamic Object Bounds", StaticOcclusionCullingVisualization.showDynamicObjectBounds);
+            StaticOcclusionCullingVisualization.showGeometryCulling = EditorGUILayout.ToggleLeft("Show Geometry Culling", StaticOcclusionCullingVisualization.showGeometryCulling);
+            StaticOcclusionCullingVisualization.showOcclusionCulling = EditorGUILayout.ToggleLeft("Show Occlusion Culling", StaticOcclusionCullingVisualization.showOcclusionCulling);
+            StaticOcclusionCullingVisualization.showPortals = EditorGUILayout.ToggleLeft("Show Portals", StaticOcclusionCullingVisualization.showPortals);
+            StaticOcclusionCullingVisualization.showPreVisualization = EditorGUILayout.ToggleLeft("Show Pre-Visualization", StaticOcclusionCullingVisualization.showPreVisualization);
+            StaticOcclusionCullingVisualization.showViewVolumes = EditorGUILayout.ToggleLeft("Show View Volumes", StaticOcclusionCullingVisualization.showViewVolumes);
+            StaticOcclusionCullingVisualization.showVisibilityLines = EditorGUILayout.ToggleLeft("Show Visibility Lines", StaticOcclusionCullingVisualization.showVisibilityLines);
+            EditorGUILayout.EndVertical();
+        }
+        EditorGUILayout.EndFoldoutHeaderGroup();
     }
     #endregion
 
@@ -429,7 +493,7 @@ public class SOCWizard : EditorWindow
         WriteUmbraLogToConsole();
     }
 
-    public void CreateCustomCullingGroup(int sphereCount, float baseRadius, float radiusStepValue)
+    public Component CreateCustomCullingGroup(int sphereCount, float baseRadius, float radiusStepValue)
     {
         UnityEngine.Debug.Log($"Creating a new culling group: count {sphereCount} || base radius {baseRadius} || radius step value {radiusStepValue}");
 
@@ -453,6 +517,8 @@ public class SOCWizard : EditorWindow
         newCullingGroup.SetBoundingSphereCount(1);
         newCullingGroup.Dispose();
         newCullingGroup = null;
+
+        return null;
     }
 
     void CullingStateChange(CullingGroupEvent evt)
