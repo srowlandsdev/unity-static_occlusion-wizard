@@ -4,6 +4,7 @@ using System.Diagnostics;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class SOCWizard : EditorWindow
 {
@@ -11,7 +12,6 @@ public class SOCWizard : EditorWindow
     bool bakeEditorBuildList;
     bool spawnOnAsset;
     bool isPortalOpen;
-
     bool showBakeTools;
     bool showSceneTool;
     bool showTest;
@@ -26,6 +26,12 @@ public class SOCWizard : EditorWindow
     GameObject target;
 
     Vector2 scrollViewPosition;
+
+    const float defBackfaceThreshold = 100;
+    const float defSmallestHole = 0.25f;
+    const float defSmallestOccluder = 5;
+
+    Dictionary<GUID, GUID> sceneOcclusionPairs;
     #endregion
 
     [MenuItem("External Tools/SOC Wizard")]
@@ -70,6 +76,8 @@ public class SOCWizard : EditorWindow
     }
 
     #region GUI Methods
+
+    //TODO: Fix scaling issue with right column in bake tools and Vis options
     void DisplayOcclussionTools()
     {
         showBakeTools = EditorGUILayout.BeginFoldoutHeaderGroup(showBakeTools, "Bake Parameters & Tools");
@@ -85,7 +93,8 @@ public class SOCWizard : EditorWindow
             StaticOcclusionCulling.smallestOccluder = EditorGUILayout.FloatField("Smallest Occluder", StaticOcclusionCulling.smallestOccluder, GUILayout.Width(200));
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Generate"))
+            EditorGUILayout.BeginVertical();
+            if (GUILayout.Button("Generate", GUILayout.Width(160)))
             {
                 if (bakeEditorBuildList)
                 {
@@ -105,7 +114,7 @@ public class SOCWizard : EditorWindow
                 }
             }
 
-            if (GUILayout.Button("Generate In Background"))
+            if (GUILayout.Button("Generate In Background", GUILayout.Width(160)))
             {
                 if (bakeEditorBuildList)
                 {
@@ -124,32 +133,36 @@ public class SOCWizard : EditorWindow
                     BackgroundBakeStaticOcclusion();
                 }
             }
-            EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Cancel Bake"))
+            if(GUILayout.Button("Default Parameters", GUILayout.Width(160)))
+            {
+                ResetBakeParametersToDefault();
+            }
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.BeginVertical();
+            if (GUILayout.Button("Cancel Bake", GUILayout.Width(160)))
             {
                 StaticOcclusionCulling.Cancel();
                 AssetDatabase.SaveAssets();
                 UnityEngine.Debug.Log("SOC bake operation cancelled!");
             }
 
-            if (GUILayout.Button("Clear Current Data"))
+            if (GUILayout.Button("Clear Current Data", GUILayout.Width(160)))
             {
                 StaticOcclusionCulling.Clear();
                 AssetDatabase.SaveAssets();
                 UnityEngine.Debug.Log("SOC bake data cleared");
             }
 
-            if (GUILayout.Button("Remove Cache Data"))
+            if (GUILayout.Button("Remove Cache Data", GUILayout.Width(160)))
             {
                 StaticOcclusionCulling.RemoveCacheFolder();
                 AssetDatabase.SaveAssets();
                 UnityEngine.Debug.Log("SOC cache data has been deleted!");
             }
+            EditorGUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.HelpBox("Removing cache data cannot be undone!", MessageType.Warning);
 
             EditorGUILayout.EndVertical();
         }
@@ -164,7 +177,7 @@ public class SOCWizard : EditorWindow
 
         if(showTest)
         {
-            if (GUILayout.Button("Run SOC Test"))
+            if (GUILayout.Button("Run Static Occlusuion Test", GUILayout.Width(200)))
             {
                 UnityEngine.Debug.Log($"Clearing old SOC data.");
                 StaticOcclusionCulling.Clear();
@@ -209,7 +222,7 @@ public class SOCWizard : EditorWindow
             EditorGUILayout.BeginVertical();
             if (Directory.Exists(@"Library/Occlusion"))
             {
-                if (GUILayout.Button("Open Umbra Folder"))
+                if (GUILayout.Button("Open Umbra Folder", GUILayout.Width(200)))
                 {
                     UnityEngine.Debug.Log("Opening Umbra data folder");
                     Process.Start("explorer.exe");
@@ -220,17 +233,15 @@ public class SOCWizard : EditorWindow
                 EditorGUILayout.HelpBox("No Umbra cache present", MessageType.Info);
             }
 
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Open Umbra Log File"))
+            if (GUILayout.Button("Open Umbra Log File", GUILayout.Width(200)))
             {
                 File.Open(@"E:\Projects\FFXR\Library\Occlusion\log.txt", FileMode.Open);
             }
 
-            if (GUILayout.Button("Write Umbra Log to Console"))
+            if (GUILayout.Button("Write Umbra Log to Console", GUILayout.Width(200)))
             {
                 WriteUmbraLogToConsole();
             }
-            EditorGUILayout.EndHorizontal();
             EditorGUILayout.EndVertical();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
@@ -251,25 +262,16 @@ public class SOCWizard : EditorWindow
             isPortalOpen = EditorGUILayout.ToggleLeft("Portal Creation State", isPortalOpen);
             EditorGUILayout.EndHorizontal();
 
-            occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template", occlusionPortalTemplate, typeof(GameObject), true);
-            occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true);
-
-            if (isPortalOpen == false)
-            {
-                EditorGUILayout.HelpBox("Portal creation state is set to CLOSED", MessageType.Info);
-            }
-            else
-            {
-                EditorGUILayout.HelpBox("Portal creation state is set to OPEN", MessageType.Info);
-            }
+            occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template", occlusionPortalTemplate, typeof(GameObject), true, GUILayout.Width(350));
+            occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true, GUILayout.Width(350));
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Create SOC Portal"))
+            if (GUILayout.Button("Create SOC Portal",GUILayout.Width(150)))
             {
                 GenerateOcclusionPortal();
             }
 
-            if (GUILayout.Button("Create SOC Area"))
+            if (GUILayout.Button("Create SOC Area", GUILayout.Width(150)))
             {
                 GenerateOcclusionArea();
             }
@@ -290,17 +292,39 @@ public class SOCWizard : EditorWindow
 
         if(showSocInfo)
         {
-            GUILayout.Label($"# of Occlusion Data files in project: {totalOcDataFileCount}");
+            GUILayout.Label($"# of occlusion data files in project: {totalOcDataFileCount}");
+            GUILayout.Label($"Size of project occlusion data: {totalOcDataFileCount}");
 
-            if (GUILayout.Button("Occlusion Data Paths to Console"))
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Occlusion Paths to Console",GUILayout.Width(180)))
             {
                 GetProjectOcclusionData();
             }
 
-            if (GUILayout.Button("Occlusion Data Paths to File"))
+            if (GUILayout.Button("Occlusion Paths to File", GUILayout.Width(180)))
             {
                 WriteOcclusionDataToFile();
             }
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Occlusion File to Console", GUILayout.Width(180)))
+            {
+                OcclusionFileDataToConsole();
+            }
+
+            if(GUILayout.Button("Update Occlusion Dictionary",GUILayout.Width(180)))
+            {
+                UpdateOcclusionDictionary();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Project Occlusion Size", GUILayout.Width(180)))
+            {
+                CalculateOverallOcclusionDataSize();
+            }
+            EditorGUILayout.EndVertical();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
@@ -316,7 +340,7 @@ public class SOCWizard : EditorWindow
             float baseRadius = EditorGUILayout.FloatField("Base Radius Size", 10f, GUILayout.Width(200));
             float radiusStepValue = EditorGUILayout.FloatField("Radius Increment Value", 20f, GUILayout.Width(200));
 
-            if (GUILayout.Button("Create Custom Culling Group"))
+            if (GUILayout.Button("Create Custom Culling Group", GUILayout.Width(200)))
             {
                 CreateCustomCullingGroup(numberOfSpheres, baseRadius, radiusStepValue);
             }
@@ -332,15 +356,20 @@ public class SOCWizard : EditorWindow
 
         if(showVisOptions)
         {
+            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.BeginVertical();
             StaticOcclusionCullingVisualization.showDynamicObjectBounds = EditorGUILayout.ToggleLeft("Show Dynamic Object Bounds", StaticOcclusionCullingVisualization.showDynamicObjectBounds);
             StaticOcclusionCullingVisualization.showGeometryCulling = EditorGUILayout.ToggleLeft("Show Geometry Culling", StaticOcclusionCullingVisualization.showGeometryCulling);
             StaticOcclusionCullingVisualization.showOcclusionCulling = EditorGUILayout.ToggleLeft("Show Occlusion Culling", StaticOcclusionCullingVisualization.showOcclusionCulling);
             StaticOcclusionCullingVisualization.showPortals = EditorGUILayout.ToggleLeft("Show Portals", StaticOcclusionCullingVisualization.showPortals);
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.BeginVertical();
             StaticOcclusionCullingVisualization.showPreVisualization = EditorGUILayout.ToggleLeft("Show Pre-Visualization", StaticOcclusionCullingVisualization.showPreVisualization);
             StaticOcclusionCullingVisualization.showViewVolumes = EditorGUILayout.ToggleLeft("Show View Volumes", StaticOcclusionCullingVisualization.showViewVolumes);
             StaticOcclusionCullingVisualization.showVisibilityLines = EditorGUILayout.ToggleLeft("Show Visibility Lines", StaticOcclusionCullingVisualization.showVisibilityLines);
             EditorGUILayout.EndVertical();
+            EditorGUILayout.EndHorizontal();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
@@ -420,7 +449,7 @@ public class SOCWizard : EditorWindow
             foreach (string file in ocDataFiles)
             {
                 string path = AssetDatabase.GUIDToAssetPath(file);
-                UnityEngine.Debug.Log($"Occlusion data path: {path}");
+                UnityEngine.Debug.Log($"Occlusion data: {path}:{file}");
             }
         }
     }
@@ -493,6 +522,7 @@ public class SOCWizard : EditorWindow
         WriteUmbraLogToConsole();
     }
 
+    //TODO: Complete component and introduce AddComponent<CreateCustomCullingGroup>
     public Component CreateCustomCullingGroup(int sphereCount, float baseRadius, float radiusStepValue)
     {
         UnityEngine.Debug.Log($"Creating a new culling group: count {sphereCount} || base radius {baseRadius} || radius step value {radiusStepValue}");
@@ -532,6 +562,84 @@ public class SOCWizard : EditorWindow
         if (evt.hasBecomeInvisible)
         {
             UnityEngine.Debug.LogFormat("Asset {0} has become invisible!", evt.index);
+        }
+    }
+
+    void ResetBakeParametersToDefault()
+    {
+        UnityEngine.Debug.Log($"Resetting bake parameters to default values, [Backface Threshold:{defBackfaceThreshold}], [Smallest Hole:{defSmallestHole}], [Smallest Occluder:{defSmallestOccluder}]");
+
+        StaticOcclusionCulling.backfaceThreshold = defBackfaceThreshold;
+        StaticOcclusionCulling.smallestHole = defSmallestHole;
+        StaticOcclusionCulling.smallestOccluder = defSmallestOccluder;
+    }
+
+    //TODO: Take target file from object field or dictionary
+    void OcclusionFileDataToConsole()
+    {
+        string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
+
+        foreach(string line in ocDataFiles)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(line);
+            string[] fileContents = File.ReadAllLines(path);
+
+            foreach(string text in fileContents)
+            {
+                UnityEngine.Debug.Log(text);
+            }
+        }
+    }
+
+    //TODO: Fix output and seperate scene line
+    void UpdateOcclusionDictionary()
+    {
+        string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
+
+        foreach (string ocGuidLine in ocDataFiles)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(ocGuidLine);
+            string[] fileContents = File.ReadAllLines(path);
+
+            foreach (string text in fileContents)
+            {
+                if(text.Contains("scene: "))
+                {
+                    UnityEngine.Debug.Log(text);
+                }
+            }
+        }
+    }
+    //TODO: Write method to compile overall size of OC data on a project !Not Umbra
+
+    void CalculateOverallOcclusionDataSize()
+    {
+        string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
+
+        foreach(string ocFile in ocDataFiles)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(ocFile);
+            FileInfo fInfo = new FileInfo(path);
+            long fileSize;
+
+            fileSize = fInfo.Length;
+
+            UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024} kilobytes");
+            UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024/1024} megabytes");
+        }
+    }
+
+    void VerifyGuidDictionaryExistance(GUID ocGuid, GUID sceneGuid)
+    {
+        if(sceneOcclusionPairs.ContainsKey(ocGuid) || sceneOcclusionPairs.ContainsValue(sceneGuid))
+        {
+            UnityEngine.Debug.LogError("Occlusion or scene guid already exists in dictionary!");
+        }
+        else
+        {
+            UnityEngine.Debug.Log($"Adding new entry to dictionary, occlusion GUID:{ocGuid} scene GUID:{sceneGuid}");
+            sceneOcclusionPairs.Add(ocGuid, sceneGuid);
+            AssetDatabase.SaveAssets();
         }
     }
     #endregion
