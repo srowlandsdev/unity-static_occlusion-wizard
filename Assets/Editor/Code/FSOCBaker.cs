@@ -67,9 +67,6 @@ public class SOCWizard : EditorWindow
         DisplayProjectOcclusionInformation();
         GUILayout.Space(5);
         EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        DisplayCustomGroupCreator();
-        GUILayout.Space(5);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         DisplayVisualizationOptions();
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndScrollView();
@@ -329,27 +326,6 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
-    void DisplayCustomGroupCreator()
-    {
-        showCustomGroupTools = EditorGUILayout.BeginFoldoutHeaderGroup(showCustomGroupTools, "Custom Group Creator");
-
-        if(showCustomGroupTools)
-        {
-            EditorGUILayout.BeginVertical();
-            int numberOfSpheres = EditorGUILayout.IntField("# of Bounding Spheres", 100, GUILayout.Width(200));
-            float baseRadius = EditorGUILayout.FloatField("Base Radius Size", 10f, GUILayout.Width(200));
-            float radiusStepValue = EditorGUILayout.FloatField("Radius Increment Value", 20f, GUILayout.Width(200));
-
-            if (GUILayout.Button("Create Custom Culling Group", GUILayout.Width(200)))
-            {
-                CreateCustomCullingGroup(numberOfSpheres, baseRadius, radiusStepValue);
-            }
-
-            EditorGUILayout.EndVertical();
-        }
-        EditorGUILayout.EndFoldoutHeaderGroup();
-    }
-
     void DisplayVisualizationOptions()
     {
         showVisOptions = EditorGUILayout.BeginFoldoutHeaderGroup(showVisOptions, "Visualization Options");
@@ -522,49 +498,6 @@ public class SOCWizard : EditorWindow
         WriteUmbraLogToConsole();
     }
 
-    //TODO: Complete component and introduce AddComponent<CreateCustomCullingGroup>
-    public Component CreateCustomCullingGroup(int sphereCount, float baseRadius, float radiusStepValue)
-    {
-        UnityEngine.Debug.Log($"Creating a new culling group: count {sphereCount} || base radius {baseRadius} || radius step value {radiusStepValue}");
-
-        BoundingSphere[] bSpheres = new BoundingSphere[sphereCount];
-
-        bSpheres[0] = new BoundingSphere(Vector3.zero, baseRadius);
-
-        for(int i = 0; i > bSpheres.Length; i++)
-        {
-            bSpheres[i].radius = radiusStepValue;
-        }
-
-        CullingGroup newCullingGroup = new CullingGroup()
-        {
-            targetCamera = Camera.main,
-            enabled = true,
-            onStateChanged = CullingStateChange
-        };
-
-        newCullingGroup.SetBoundingSpheres(bSpheres);
-        newCullingGroup.SetBoundingSphereCount(1);
-        newCullingGroup.Dispose();
-        newCullingGroup = null;
-
-        return null;
-    }
-
-    void CullingStateChange(CullingGroupEvent evt)
-    {
-        if (evt.hasBecomeVisible)
-        {
-            UnityEngine.Debug.LogFormat("Asset {0} has become visible!", evt.index);
-            UnityEngine.Debug.LogFormat("Asset {0} is this distance from the culling group", evt.currentDistance);
-        }
-
-        if (evt.hasBecomeInvisible)
-        {
-            UnityEngine.Debug.LogFormat("Asset {0} has become invisible!", evt.index);
-        }
-    }
-
     void ResetBakeParametersToDefault()
     {
         UnityEngine.Debug.Log($"Resetting bake parameters to default values, [Backface Threshold:{defBackfaceThreshold}], [Smallest Hole:{defSmallestHole}], [Smallest Occluder:{defSmallestOccluder}]");
@@ -626,20 +559,6 @@ public class SOCWizard : EditorWindow
 
             UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024} kilobytes");
             UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024/1024} megabytes");
-        }
-    }
-
-    void VerifyGuidDictionaryExistance(GUID ocGuid, GUID sceneGuid)
-    {
-        if(sceneOcclusionPairs.ContainsKey(ocGuid) || sceneOcclusionPairs.ContainsValue(sceneGuid))
-        {
-            UnityEngine.Debug.LogError("Occlusion or scene guid already exists in dictionary!");
-        }
-        else
-        {
-            UnityEngine.Debug.Log($"Adding new entry to dictionary, occlusion GUID:{ocGuid} scene GUID:{sceneGuid}");
-            sceneOcclusionPairs.Add(ocGuid, sceneGuid);
-            AssetDatabase.SaveAssets();
         }
     }
     #endregion
