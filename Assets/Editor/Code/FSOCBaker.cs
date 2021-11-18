@@ -4,7 +4,7 @@ using System.Diagnostics;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
+using UnityEditor.SceneManagement;
 
 public class SOCWizard : EditorWindow
 {
@@ -20,8 +20,10 @@ public class SOCWizard : EditorWindow
     bool showCustomGroupTools;
     bool showVisOptions;
 
-    UnityEngine.Object occlusionPortalTemplate;
-    UnityEngine.Object occlusionAreaTemplate;
+    [SerializeField]
+    private UnityEngine.Object occlusionPortalTemplate;
+    [SerializeField]
+    private UnityEngine.Object occlusionAreaTemplate;
 
     GameObject target;
 
@@ -30,8 +32,6 @@ public class SOCWizard : EditorWindow
     const float defBackfaceThreshold = 100;
     const float defSmallestHole = 0.25f;
     const float defSmallestOccluder = 5;
-
-    Dictionary<GUID, GUID> sceneOcclusionPairs;
     #endregion
 
     [MenuItem("External Tools/SOC Wizard")]
@@ -73,7 +73,6 @@ public class SOCWizard : EditorWindow
     }
 
     #region GUI Methods
-
     //TODO: Fix scaling issue with right column in bake tools and Vis options
     void DisplayOcclussionTools()
     {
@@ -95,13 +94,13 @@ public class SOCWizard : EditorWindow
             {
                 if (bakeEditorBuildList)
                 {
-                    UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
+                    UnityEngine.Debug.Log("SOC Baking all scenes in editor build scene list");
                     foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
                     {
-                        UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
-                        SceneManager.LoadScene("");
+                        UnityEngine.Debug.Log($"Opening {scene.path}");
+                        EditorSceneManager.OpenScene(scene.path, OpenSceneMode.Single);
+                        UnityEngine.Debug.Log($"Baking scene{scene.path}");
                         BakeStaticOcclusion();
-                        UnityEngine.Debug.Log($"Baking scene{null}");
                     }
                 }
                 else
@@ -118,10 +117,10 @@ public class SOCWizard : EditorWindow
                     UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
                     foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
                     {
-                        UnityEngine.Debug.Log($"Loading scene {null} from editor build scene list");
-                        SceneManager.LoadScene("");
+                        UnityEngine.Debug.Log($"Opening {scene.path}");
+                        EditorSceneManager.OpenScene(scene.path, OpenSceneMode.Single);
+                        UnityEngine.Debug.Log($"Baking scene{scene.path}");
                         BackgroundBakeStaticOcclusion();
-                        UnityEngine.Debug.Log($"Baking scene{null}");
                     }
                 }
                 else
@@ -145,13 +144,6 @@ public class SOCWizard : EditorWindow
                 UnityEngine.Debug.Log("SOC bake operation cancelled!");
             }
 
-            if (GUILayout.Button("Clear Current Data", GUILayout.Width(160)))
-            {
-                StaticOcclusionCulling.Clear();
-                AssetDatabase.SaveAssets();
-                UnityEngine.Debug.Log("SOC bake data cleared");
-            }
-
             if (GUILayout.Button("Remove Cache Data", GUILayout.Width(160)))
             {
                 StaticOcclusionCulling.RemoveCacheFolder();
@@ -168,26 +160,13 @@ public class SOCWizard : EditorWindow
 
     public void OcclussionBakeProfiler()
     {
-        Stopwatch stopwatch = new Stopwatch();
-
         showTest = EditorGUILayout.BeginFoldoutHeaderGroup(showTest, "Static Occlusion Profiler");
 
-        if(showTest)
+        if (showTest)
         {
-            if (GUILayout.Button("Run Static Occlusuion Test", GUILayout.Width(200)))
+            if (GUILayout.Button("Run Static Occlusion Test", GUILayout.Width(200)))
             {
-                UnityEngine.Debug.Log($"Clearing old SOC data.");
-                StaticOcclusionCulling.Clear();
-
-                stopwatch.Start();
-                BakeStaticOcclusion();
-                stopwatch.Stop();
-                StaticOcclusionCulling.Clear();
-
-                stopwatch.Reset();
-                stopwatch.Start();
-                BackgroundBakeStaticOcclusion();
-                stopwatch.Stop();
+                RunProfileTest();
             }
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
@@ -196,7 +175,9 @@ public class SOCWizard : EditorWindow
     //TODO: Find a way to get the lib folder path
     void DisplayContextInformation()
     {
-        float umbraSize = StaticOcclusionCulling.umbraDataSize;
+        long umbraSize = StaticOcclusionCulling.umbraDataSize;
+        long umbraSizeKb = umbraSize / 1024;
+        long umbraSizeMb = umbraSize / (1024*1024);
 
         showUmbraInfo = EditorGUILayout.BeginFoldoutHeaderGroup(showUmbraInfo, "Umbra Cache Utils");
 
@@ -213,8 +194,8 @@ public class SOCWizard : EditorWindow
             }
 
             GUILayout.Label($"Umbra data size in Bytes: {umbraSize}");
-            GUILayout.Label($"Umbra data size in Kilobytes: {umbraSize / 1024}");
-            GUILayout.Label($"Umbra data size in Megabytes: {umbraSize / 1024 / 1024}");
+            GUILayout.Label($"Umbra data size in Kilobytes: {umbraSizeKb}");
+            GUILayout.Label($"Umbra data size in Megabytes: {umbraSizeMb}");
 
             EditorGUILayout.BeginVertical();
             if (Directory.Exists(@"Library/Occlusion"))
@@ -230,14 +211,16 @@ public class SOCWizard : EditorWindow
                 EditorGUILayout.HelpBox("No Umbra cache present", MessageType.Info);
             }
 
-            if (GUILayout.Button("Open Umbra Log File", GUILayout.Width(200)))
-            {
-                File.Open(@"E:\Projects\FFXR\Library\Occlusion\log.txt", FileMode.Open);
-            }
-
             if (GUILayout.Button("Write Umbra Log to Console", GUILayout.Width(200)))
             {
                 WriteUmbraLogToConsole();
+            }
+
+            if (GUILayout.Button("Clear Current Umbra Data", GUILayout.Width(200)))
+            {
+                StaticOcclusionCulling.Clear();
+                AssetDatabase.SaveAssets();
+                UnityEngine.Debug.Log("SOC bake data cleared");
             }
             EditorGUILayout.EndVertical();
         }
@@ -311,10 +294,6 @@ public class SOCWizard : EditorWindow
                 OcclusionFileDataToConsole();
             }
 
-            if(GUILayout.Button("Update Occlusion Dictionary",GUILayout.Width(180)))
-            {
-                UpdateOcclusionDictionary();
-            }
             EditorGUILayout.EndHorizontal();
 
             if (GUILayout.Button("Project Occlusion Size", GUILayout.Width(180)))
@@ -360,6 +339,15 @@ public class SOCWizard : EditorWindow
         {
             UnityEngine.Debug.Log($"[UMBRA LOG] {line}");
         }
+    }
+
+    void RunProfileTest()
+    {
+        UnityEngine.Debug.Log($"Clearing old SOC data.");
+        StaticOcclusionCulling.Clear();
+        BakeStaticOcclusion();
+        StaticOcclusionCulling.Clear();
+        BackgroundBakeStaticOcclusion();
     }
 
     void GenerateOcclusionPortal()
@@ -425,7 +413,7 @@ public class SOCWizard : EditorWindow
             foreach (string file in ocDataFiles)
             {
                 string path = AssetDatabase.GUIDToAssetPath(file);
-                UnityEngine.Debug.Log($"Occlusion data: {path}:{file}");
+                UnityEngine.Debug.Log($"Occlusion asset path and guid: {path} : {file}");
             }
         }
     }
@@ -524,27 +512,6 @@ public class SOCWizard : EditorWindow
         }
     }
 
-    //TODO: Fix output and seperate scene line
-    void UpdateOcclusionDictionary()
-    {
-        string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
-
-        foreach (string ocGuidLine in ocDataFiles)
-        {
-            string path = AssetDatabase.GUIDToAssetPath(ocGuidLine);
-            string[] fileContents = File.ReadAllLines(path);
-
-            foreach (string text in fileContents)
-            {
-                if(text.Contains("scene: "))
-                {
-                    UnityEngine.Debug.Log(text);
-                }
-            }
-        }
-    }
-    //TODO: Write method to compile overall size of OC data on a project !Not Umbra
-
     void CalculateOverallOcclusionDataSize()
     {
         string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
@@ -558,7 +525,7 @@ public class SOCWizard : EditorWindow
             fileSize = fInfo.Length;
 
             UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024} kilobytes");
-            UnityEngine.Debug.Log($"File size for {path} is {fileSize/1024/1024} megabytes");
+            UnityEngine.Debug.Log($"File size for {path} is {fileSize/(1024*1024)} megabytes");
         }
     }
     #endregion
