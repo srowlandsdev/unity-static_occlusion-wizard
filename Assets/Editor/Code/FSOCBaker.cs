@@ -17,24 +17,17 @@ public class SOCWizard : EditorWindow
     bool showTest;
     bool showUmbraInfo;
     bool showSocInfo;
-    bool showCustomGroupTools;
     bool showVisOptions;
-
-    [SerializeField]
-    private UnityEngine.Object occlusionPortalTemplate;
-    [SerializeField]
-    private UnityEngine.Object occlusionAreaTemplate;
-
+    static GameObject occlusionPortalTemplate;
+    static GameObject occlusionAreaTemplate;
     GameObject target;
-
     Vector2 scrollViewPosition;
-
     const float defBackfaceThreshold = 100;
     const float defSmallestHole = 0.25f;
     const float defSmallestOccluder = 5;
     #endregion
 
-    [MenuItem("External Tools/SOC Wizard")]
+    [MenuItem("External Tools/Tech Art/Static Occlusion Culling Wizard")]
     static void GetSocWindow()
     {
         SOCWizard window = (SOCWizard)GetWindow(typeof(SOCWizard));
@@ -73,7 +66,6 @@ public class SOCWizard : EditorWindow
     }
 
     #region GUI Methods
-    //TODO: Fix scaling issue with right column in bake tools and Vis options
     void DisplayOcclussionTools()
     {
         showBakeTools = EditorGUILayout.BeginFoldoutHeaderGroup(showBakeTools, "Bake Parameters & Tools");
@@ -88,7 +80,6 @@ public class SOCWizard : EditorWindow
             StaticOcclusionCulling.smallestHole = EditorGUILayout.FloatField("Smallest Hole", StaticOcclusionCulling.smallestHole, GUILayout.Width(200));
             StaticOcclusionCulling.smallestOccluder = EditorGUILayout.FloatField("Smallest Occluder", StaticOcclusionCulling.smallestOccluder, GUILayout.Width(200));
 
-            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.BeginVertical();
             if (GUILayout.Button("Generate", GUILayout.Width(160)))
             {
@@ -134,9 +125,7 @@ public class SOCWizard : EditorWindow
             {
                 ResetBakeParametersToDefault();
             }
-            EditorGUILayout.EndVertical();
 
-            EditorGUILayout.BeginVertical();
             if (GUILayout.Button("Cancel Bake", GUILayout.Width(160)))
             {
                 StaticOcclusionCulling.Cancel();
@@ -151,7 +140,6 @@ public class SOCWizard : EditorWindow
                 UnityEngine.Debug.Log("SOC cache data has been deleted!");
             }
             EditorGUILayout.EndVertical();
-            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
         }
@@ -172,7 +160,6 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
-    //TODO: Find a way to get the lib folder path
     void DisplayContextInformation()
     {
         long umbraSize = StaticOcclusionCulling.umbraDataSize;
@@ -188,11 +175,6 @@ public class SOCWizard : EditorWindow
                 EditorGUILayout.HelpBox("SOC bake is running", MessageType.Info);
             }
 
-            if (StaticOcclusionCulling.doesSceneHaveManualPortals == true)
-            {
-                EditorGUILayout.HelpBox("Current scene has manual occlusion portals", MessageType.Info);
-            }
-
             GUILayout.Label($"Umbra data size in Bytes: {umbraSize}");
             GUILayout.Label($"Umbra data size in Kilobytes: {umbraSizeKb}");
             GUILayout.Label($"Umbra data size in Megabytes: {umbraSizeMb}");
@@ -203,7 +185,7 @@ public class SOCWizard : EditorWindow
                 if (GUILayout.Button("Open Umbra Folder", GUILayout.Width(200)))
                 {
                     UnityEngine.Debug.Log("Opening Umbra data folder");
-                    Process.Start("explorer.exe");
+                    Process.Start("explorer.exe", @"Library\Occlusion");
                 }
             }
             else
@@ -231,7 +213,12 @@ public class SOCWizard : EditorWindow
     {
         showSceneTool = EditorGUILayout.BeginFoldoutHeaderGroup(showSceneTool, "Custom Occlusion Scene Tools");
 
-        if(showSceneTool)
+        if (StaticOcclusionCulling.doesSceneHaveManualPortals == true)
+        {
+            EditorGUILayout.HelpBox("Current scene has manual occlusion portals", MessageType.Info);
+        }
+
+        if (showSceneTool)
         {
             EditorGUILayout.BeginVertical();
             EditorGUILayout.BeginHorizontal();
@@ -242,8 +229,8 @@ public class SOCWizard : EditorWindow
             isPortalOpen = EditorGUILayout.ToggleLeft("Portal Creation State", isPortalOpen);
             EditorGUILayout.EndHorizontal();
 
-            occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template", occlusionPortalTemplate, typeof(GameObject), true, GUILayout.Width(350));
-            occlusionAreaTemplate = EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true, GUILayout.Width(350));
+            occlusionPortalTemplate = (GameObject)EditorGUILayout.ObjectField("Occlusion Portal Template", occlusionPortalTemplate, typeof(GameObject), true, GUILayout.Width(350));
+            occlusionAreaTemplate = (GameObject)EditorGUILayout.ObjectField("Occlusion Area Template", occlusionAreaTemplate, typeof(GameObject), true, GUILayout.Width(350));
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Create SOC Portal",GUILayout.Width(150)))
@@ -261,7 +248,6 @@ public class SOCWizard : EditorWindow
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
 
-    //TODO: Write paths to file and output path location
     void DisplayProjectOcclusionInformation()
     {
         string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
@@ -276,7 +262,6 @@ public class SOCWizard : EditorWindow
             GUILayout.Label($"Size of project occlusion data: {totalOcDataFileCount}");
 
             EditorGUILayout.BeginVertical();
-            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Occlusion Paths to Console",GUILayout.Width(180)))
             {
                 GetProjectOcclusionData();
@@ -286,15 +271,6 @@ public class SOCWizard : EditorWindow
             {
                 WriteOcclusionDataToFile();
             }
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Occlusion File to Console", GUILayout.Width(180)))
-            {
-                OcclusionFileDataToConsole();
-            }
-
-            EditorGUILayout.EndHorizontal();
 
             if (GUILayout.Button("Project Occlusion Size", GUILayout.Width(180)))
             {
@@ -311,20 +287,13 @@ public class SOCWizard : EditorWindow
 
         if(showVisOptions)
         {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.BeginVertical();
             StaticOcclusionCullingVisualization.showDynamicObjectBounds = EditorGUILayout.ToggleLeft("Show Dynamic Object Bounds", StaticOcclusionCullingVisualization.showDynamicObjectBounds);
             StaticOcclusionCullingVisualization.showGeometryCulling = EditorGUILayout.ToggleLeft("Show Geometry Culling", StaticOcclusionCullingVisualization.showGeometryCulling);
             StaticOcclusionCullingVisualization.showOcclusionCulling = EditorGUILayout.ToggleLeft("Show Occlusion Culling", StaticOcclusionCullingVisualization.showOcclusionCulling);
             StaticOcclusionCullingVisualization.showPortals = EditorGUILayout.ToggleLeft("Show Portals", StaticOcclusionCullingVisualization.showPortals);
-            EditorGUILayout.EndVertical();
-
-            EditorGUILayout.BeginVertical();
             StaticOcclusionCullingVisualization.showPreVisualization = EditorGUILayout.ToggleLeft("Show Pre-Visualization", StaticOcclusionCullingVisualization.showPreVisualization);
             StaticOcclusionCullingVisualization.showViewVolumes = EditorGUILayout.ToggleLeft("Show View Volumes", StaticOcclusionCullingVisualization.showViewVolumes);
             StaticOcclusionCullingVisualization.showVisibilityLines = EditorGUILayout.ToggleLeft("Show Visibility Lines", StaticOcclusionCullingVisualization.showVisibilityLines);
-            EditorGUILayout.EndVertical();
-            EditorGUILayout.EndHorizontal();
         }
         EditorGUILayout.EndFoldoutHeaderGroup();
     }
@@ -333,7 +302,7 @@ public class SOCWizard : EditorWindow
     #region Functional Methods
     void WriteUmbraLogToConsole()
     {
-        string[] lines = File.ReadAllLines(@"E:\Projects\FFXR\Library\Occlusion\log.txt");
+        string[] lines = File.ReadAllLines(@"Library\Occlusion\log.txt");
 
         foreach (string line in lines)
         {
@@ -493,23 +462,6 @@ public class SOCWizard : EditorWindow
         StaticOcclusionCulling.backfaceThreshold = defBackfaceThreshold;
         StaticOcclusionCulling.smallestHole = defSmallestHole;
         StaticOcclusionCulling.smallestOccluder = defSmallestOccluder;
-    }
-
-    //TODO: Take target file from object field or dictionary
-    void OcclusionFileDataToConsole()
-    {
-        string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
-
-        foreach(string line in ocDataFiles)
-        {
-            string path = AssetDatabase.GUIDToAssetPath(line);
-            string[] fileContents = File.ReadAllLines(path);
-
-            foreach(string text in fileContents)
-            {
-                UnityEngine.Debug.Log(text);
-            }
-        }
     }
 
     void CalculateOverallOcclusionDataSize()
