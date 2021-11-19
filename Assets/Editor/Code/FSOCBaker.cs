@@ -252,14 +252,11 @@ public class SOCWizard : EditorWindow
     {
         string[] ocDataFiles = AssetDatabase.FindAssets("OcclusionCullingData");
 
-        int totalOcDataFileCount = ocDataFiles.Length;
-
         showSocInfo = EditorGUILayout.BeginFoldoutHeaderGroup(showSocInfo, "Static Occlusion Information");
 
         if(showSocInfo)
         {
-            GUILayout.Label($"# of occlusion data files in project: {totalOcDataFileCount}");
-            GUILayout.Label($"Size of project occlusion data: {totalOcDataFileCount}");
+            GUILayout.Label($"# of occlusion data files in project: {ocDataFiles.Length}");
 
             EditorGUILayout.BeginVertical();
             if (GUILayout.Button("Occlusion Paths to Console",GUILayout.Width(180)))
