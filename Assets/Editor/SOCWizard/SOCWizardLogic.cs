@@ -30,9 +30,9 @@ namespace SOCWizard
         private const float DefSmallestHole = 0.25f;
         private const float DefSmallestOccluder = 5;
 
-        public static void WriteUmbraLogToConsole()
+        public void WriteUmbraLogToConsole()
         {
-            var lines = File.ReadAllLines(@"E:\Projects\FFXR\Library\Occlusion\log.txt");
+            var lines = File.ReadAllLines(@"Library\Occlusion\log.txt");
 
             foreach (var line in lines)
             {
