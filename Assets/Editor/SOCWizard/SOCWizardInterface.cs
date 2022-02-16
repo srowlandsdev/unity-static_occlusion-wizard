@@ -3,36 +3,18 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using SOCWizard.Data;
 
 namespace SOCWizard.UI
 {
     public class SOCWizard : EditorWindow
     {
-        #region Variables
-
-        private bool _bakeEditorBuildList;
-        private bool _spawnOnAsset;
-        private bool _isPortalOpen;
-        private bool _showBakeTools;
-        private bool _showSceneTool;
-        private bool _showTest;
-        private bool _showUmbraInfo;
-        private bool _showSocInfo;
-        private bool _showVisOptions;
-
         private UnityEngine.Object _occlusionPortalTemplate;
         private UnityEngine.Object _occlusionAreaTemplate;
-
         private GameObject _target;
-
         private Vector2 _scrollViewPosition;
-
-        private const float DefBackfaceThreshold = 100;
-        private const float DefSmallestHole = 0.25f;
-        private const float DefSmallestOccluder = 5;
-        #endregion
-
-        SOCWizardLogic logic = new();
+        readonly SOCWizardLogic logic = new();
+        readonly SOCWizardData data = new();
 
         [MenuItem("External Tools/SOC Wizard")]
         private static void GetSocWindow()
@@ -76,14 +58,14 @@ namespace SOCWizard.UI
         //TODO: Fix scaling issue with right column in bake tools and Vis options
         private void DisplayOcclusionTools()
         {
-            _showBakeTools = EditorGUILayout.BeginFoldoutHeaderGroup(_showBakeTools, "Bake Parameters & Tools");
+            data._showBakeTools = EditorGUILayout.BeginFoldoutHeaderGroup(data._showBakeTools, "Bake Parameters & Tools");
 
-            if(_showBakeTools)
+            if(data._showBakeTools)
             {
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.BeginVertical();
 
-                _bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", _bakeEditorBuildList);
+                data._bakeEditorBuildList = EditorGUILayout.ToggleLeft("Bake Editor Build Scene List", data._bakeEditorBuildList);
 
                 StaticOcclusionCulling.backfaceThreshold = EditorGUILayout.FloatField("Backface Threshold", StaticOcclusionCulling.backfaceThreshold, GUILayout.Width(200));
                 StaticOcclusionCulling.smallestHole = EditorGUILayout.FloatField("Smallest Hole", StaticOcclusionCulling.smallestHole, GUILayout.Width(200));
@@ -93,7 +75,7 @@ namespace SOCWizard.UI
                 EditorGUILayout.BeginVertical();
                 if (GUILayout.Button("Generate", GUILayout.Width(160)))
                 {
-                    if (_bakeEditorBuildList)
+                    if (data._bakeEditorBuildList)
                     {
                         UnityEngine.Debug.Log("SOC Baking all scenes in editor build scene list");
                         foreach (var scene in EditorBuildSettings.scenes)
@@ -113,7 +95,7 @@ namespace SOCWizard.UI
 
                 if (GUILayout.Button("Generate In Background", GUILayout.Width(160)))
                 {
-                    if (_bakeEditorBuildList)
+                    if (data._bakeEditorBuildList)
                     {
                         UnityEngine.Debug.Log("SOC Baking all scene in editor build scene list");
                         foreach (var scene in EditorBuildSettings.scenes)
@@ -157,9 +139,9 @@ namespace SOCWizard.UI
 
         private void OcclusionBakeProfiler()
         {
-            _showTest = EditorGUILayout.BeginFoldoutHeaderGroup(_showTest, "Static Occlusion Profiler");
+            data._showTest = EditorGUILayout.BeginFoldoutHeaderGroup(data._showTest, "Static Occlusion Profiler");
 
-            if (_showTest)
+            if (data._showTest)
             {
                 if (GUILayout.Button("Run Static Occlusion Test", GUILayout.Width(200)))
                 {
@@ -176,9 +158,9 @@ namespace SOCWizard.UI
             var umbraSizeKb = umbraSize / 1024;
             var umbraSizeMb = umbraSize / (1024*1024);
 
-            _showUmbraInfo = EditorGUILayout.BeginFoldoutHeaderGroup(_showUmbraInfo, "Umbra Cache Utils");
+            data._showUmbraInfo = EditorGUILayout.BeginFoldoutHeaderGroup(data._showUmbraInfo, "Umbra Cache Utils");
 
-            if(_showUmbraInfo)
+            if(data._showUmbraInfo)
             {
                 EditorGUILayout.BeginHorizontal();
                 if (StaticOcclusionCulling.isRunning)
@@ -230,17 +212,17 @@ namespace SOCWizard.UI
 
         private void OcclusionSceneTools()
         {
-            _showSceneTool = EditorGUILayout.BeginFoldoutHeaderGroup(_showSceneTool, "Custom Occlusion Scene Tools");
+            data._showSceneTool = EditorGUILayout.BeginFoldoutHeaderGroup(data._showSceneTool, "Custom Occlusion Scene Tools");
 
-            if(_showSceneTool)
+            if(data._showSceneTool)
             {
                 EditorGUILayout.BeginVertical();
                 EditorGUILayout.BeginHorizontal();
-                _spawnOnAsset = EditorGUILayout.ToggleLeft("Spawn Asset at Target", _spawnOnAsset);
+                data._spawnOnAsset = EditorGUILayout.ToggleLeft("Spawn Asset at Target", data._spawnOnAsset);
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.BeginHorizontal();
-                _isPortalOpen = EditorGUILayout.ToggleLeft("Portal Creation State", _isPortalOpen);
+                data._isPortalOpen = EditorGUILayout.ToggleLeft("Portal Creation State", data._isPortalOpen);
                 EditorGUILayout.EndHorizontal();
 
                 _occlusionPortalTemplate = EditorGUILayout.ObjectField("Occlusion Portal Template", _occlusionPortalTemplate, typeof(GameObject), true, GUILayout.Width(350));
@@ -269,9 +251,9 @@ namespace SOCWizard.UI
 
             var totalOcDataFileCount = ocDataFiles.Length;
 
-            _showSocInfo = EditorGUILayout.BeginFoldoutHeaderGroup(_showSocInfo, "Static Occlusion Information");
+            data._showSocInfo = EditorGUILayout.BeginFoldoutHeaderGroup(data._showSocInfo, "Static Occlusion Information");
 
-            if(_showSocInfo)
+            if(data._showSocInfo)
             {
                 GUILayout.Label($"# of occlusion data files in project: {totalOcDataFileCount}");
                 GUILayout.Label($"Size of project occlusion data: {totalOcDataFileCount}");
@@ -308,9 +290,9 @@ namespace SOCWizard.UI
 
         private void DisplayVisualizationOptions()
         {
-            _showVisOptions = EditorGUILayout.BeginFoldoutHeaderGroup(_showVisOptions, "Visualization Options");
+            data._showVisOptions = EditorGUILayout.BeginFoldoutHeaderGroup(data._showVisOptions, "Visualization Options");
 
-            if(_showVisOptions)
+            if(data._showVisOptions)
             {
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.BeginVertical();

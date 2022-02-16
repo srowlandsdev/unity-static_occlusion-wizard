@@ -4,31 +4,16 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using SOCWizard.Data;
 
 namespace SOCWizard
 {
     public class SOCWizardLogic
     {
-        private bool _bakeEditorBuildList;
-        private bool _spawnOnAsset;
-        private bool _isPortalOpen;
-        private bool _showBakeTools;
-        private bool _showSceneTool;
-        private bool _showTest;
-        private bool _showUmbraInfo;
-        private bool _showSocInfo;
-        private bool _showVisOptions;
-
         private UnityEngine.Object _occlusionPortalTemplate;
         private UnityEngine.Object _occlusionAreaTemplate;
-
         private GameObject _target;
-
-        private Vector2 _scrollViewPosition;
-
-        private const float DefBackfaceThreshold = 100;
-        private const float DefSmallestHole = 0.25f;
-        private const float DefSmallestOccluder = 5;
+        readonly SOCWizardData data = new();
 
         public void WriteUmbraLogToConsole()
         {
@@ -55,7 +40,7 @@ namespace SOCWizard
 
             _target = Selection.activeGameObject;
 
-            if (_spawnOnAsset)
+            if (data._spawnOnAsset)
             {
                 UnityEngine.Debug.Log($"Spawning occlusion portal on object: {_target.name} at transform: {Vector3.zero}");
                 newOcclusionPortal = UnityEngine.GameObject.Instantiate(_occlusionPortalTemplate, _target.transform.position, Quaternion.identity) as GameObject;
@@ -63,7 +48,7 @@ namespace SOCWizard
                 if (newOcclusionPortal is not null)
                 {
                     var portalState = newOcclusionPortal.GetComponent<OcclusionPortal>();
-                    portalState.open = _isPortalOpen;
+                    portalState.open = data._isPortalOpen;
                 }
             }
             else
@@ -84,7 +69,7 @@ namespace SOCWizard
 
             _target = Selection.activeGameObject;
 
-            if (_spawnOnAsset)
+            if (data._spawnOnAsset)
             {
                 var position1 = _target.transform.position;
                 UnityEngine.Debug.Log($"Spawning occlusion area on object: {_target.name} at transform: {position1}");
@@ -194,11 +179,11 @@ namespace SOCWizard
 
         public void ResetBakeParametersToDefault()
         {
-            UnityEngine.Debug.Log($"Resetting bake parameters to default values, [Backface Threshold:{DefBackfaceThreshold}], [Smallest Hole:{DefSmallestHole}], [Smallest Occluder:{DefSmallestOccluder}]");
+            UnityEngine.Debug.Log($"Resetting bake parameters to default values, [Backface Threshold:{data.DefBackfaceThreshold}], [Smallest Hole:{data.DefSmallestHole}], [Smallest Occluder:{data.DefSmallestOccluder}]");
 
-            StaticOcclusionCulling.backfaceThreshold = DefBackfaceThreshold;
-            StaticOcclusionCulling.smallestHole = DefSmallestHole;
-            StaticOcclusionCulling.smallestOccluder = DefSmallestOccluder;
+            StaticOcclusionCulling.backfaceThreshold = data.DefBackfaceThreshold;
+            StaticOcclusionCulling.smallestHole = data.DefSmallestHole;
+            StaticOcclusionCulling.smallestOccluder = data.DefSmallestOccluder;
         }
 
         //TODO: Take target file from object field or dictionary
